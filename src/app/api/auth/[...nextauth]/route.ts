@@ -77,4 +77,11 @@ export const authOptions: AuthOptions = {
 };
 
 const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST };
+
+// Export with proper Next.js 16 App Router types
+export const GET = handler;
+export const POST = handler;
+
+// Add runtime config to satisfy Next.js 16 requirements
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
