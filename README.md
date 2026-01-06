@@ -1,143 +1,194 @@
-# YouTube Channel App
+# User Authentication System
 
-A Next.js application with Neon Postgres database integration.
+A secure user authentication system built with Next.js, NextAuth.js, and Neon Postgres.
 
-## Setup Instructions
+## 🎯 Features
 
-### 1. Local Development Setup
+- ✅ **Clean Login Page** - Simple, modern login form with glassmorphism design
+- ✅ **User Registration** - Secure account creation with password validation
+- ✅ **Password Hashing** - Bcrypt encryption for maximum security
+- ✅ **Session Management** - JWT-based authentication with NextAuth.js
+- ✅ **Protected Routes** - Dashboard accessible only to authenticated users
+- ✅ **Neon Postgres** - Cloud database integration
+- ✅ **Modern UI** - Beautiful design with gradients and animations
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+## 🚀 Setup Instructions
 
-2. Set up your environment variables:
-   - Copy `.env.local` and add your database URL
-   - You'll get this from Vercel after connecting Neon
+### 1. Environment Variables
 
-### 2. Deploy to Vercel and Connect Neon
-
-#### Option A: Deploy via Vercel CLI (Recommended)
-
-1. Install Vercel CLI:
-   ```bash
-   npm i -g vercel
-   ```
-
-2. Login to Vercel:
-   ```bash
-   vercel login
-   ```
-
-3. Deploy your project:
-   ```bash
-   vercel
-   ```
-
-4. Follow the prompts to create a new project
-
-#### Option B: Deploy via GitHub
-
-1. Push your code to GitHub:
-   ```bash
-   git add .
-   git commit -m "Initial commit"
-   git remote add origin <your-github-repo-url>
-   git push -u origin main
-   ```
-
-2. Go to [Vercel Dashboard](https://vercel.com/new)
-3. Import your GitHub repository
-4. Configure your project settings
-
-### 3. Add Neon Integration
-
-1. In your Vercel project dashboard, go to **Integrations**
-2. Search for **Neon** and click **Add Integration**
-3. Follow the prompts to:
-   - Create a new Neon database or connect an existing one
-   - Authorize the integration
-   - Select which Vercel projects should have access
-
-4. Vercel will automatically add the `DATABASE_URL` environment variable to your project
-
-### 4. Run Database Migrations
-
-After connecting Neon, you need to create your database tables:
-
-1. Pull the environment variables locally:
-   ```bash
-   vercel env pull .env.local
-   ```
-
-2. Generate migration files:
-   ```bash
-   npm run db:generate
-   ```
-
-3. Run migrations:
-   ```bash
-   npm run db:migrate
-   ```
-
-### 5. Test Your Setup
-
-1. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-2. Visit `http://localhost:3000/api/test-db` to test the database connection
-
-### 6. Optional: Use Drizzle Studio
-
-To visually explore your database:
+You need to add the following environment variable to your `.env.local` file:
 
 ```bash
-npm run db:studio
+# This should already be set from Vercel/Neon integration
+DATABASE_URL="your-neon-database-url"
+
+# Generate a random secret for NextAuth
+# You can generate one by running: openssl rand -base64 32
+NEXTAUTH_SECRET="your-secret-key-here"
+
+# For local development
+NEXTAUTH_URL="http://localhost:3000"
+
+# For production (Vercel will set this automatically)
+# NEXTAUTH_URL="https://your-domain.vercel.app"
 ```
 
-This will open Drizzle Studio in your browser.
+### 2. Generate NEXTAUTH_SECRET
 
-## Project Structure
+Run this command to generate a secure secret:
 
-```
-├── src/
-│   ├── app/              # Next.js app directory
-│   │   └── api/          # API routes
-│   └── db/               # Database configuration
-│       ├── index.ts      # Database connection
-│       └── schema.ts     # Database schema
-├── drizzle/              # Migration files (generated)
-├── drizzle.config.ts     # Drizzle configuration
-└── .env.local            # Environment variables (not in git)
+```bash
+openssl rand -base64 32
 ```
 
-## Database Schema
+Copy the output and add it to your `.env.local` file as `NEXTAUTH_SECRET`.
 
-The starter schema includes:
-- **users** table: id, name, email, timestamps
-- **posts** table: id, title, content, authorId, timestamps
+### 3. Set up the Database
 
-Modify `src/db/schema.ts` to customize your schema.
+Run the database setup script to create the users table:
 
-## Available Scripts
+```bash
+npm run db:setup
+```
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run db:generate` - Generate migration files from schema
-- `npm run db:migrate` - Run database migrations
-- `npm run db:studio` - Open Drizzle Studio
+This will create the `users` table in your Neon database with the following schema:
 
-## Environment Variables
+```sql
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW() NOT NULL
+);
+```
 
-- `DATABASE_URL` - Neon Postgres connection string (automatically added by Vercel)
+### 4. Add Environment Variables to Vercel
 
-## Learn More
+For production deployment, add these environment variables in your Vercel project settings:
 
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Neon Documentation](https://neon.tech/docs)
-- [Drizzle ORM Documentation](https://orm.drizzle.team)
-- [Vercel Documentation](https://vercel.com/docs)
+1. Go to https://vercel.com/jon-gednys-projects/youtube-channel/settings/environment-variables
+2. Add `NEXTAUTH_SECRET` (use the same value from step 2)
+3. Add `NEXTAUTH_URL` with your production URL (e.g., `https://youtube-channel-omega.vercel.app`)
+4. `DATABASE_URL` should already be set from the Neon integration
+
+### 5. Run the Development Server
+
+```bash
+npm run dev
+```
+
+Visit http://localhost:3000 to see the login page.
+
+## 📱 Usage
+
+### Creating an Account
+
+1. Visit the homepage (login page)
+2. Click "Create one" link
+3. Enter your email and password (minimum 8 characters)
+4. Confirm your password
+5. Click "Create Account"
+6. You'll be redirected to the login page
+
+### Logging In
+
+1. Enter your email and password
+2. Click "Sign In"
+3. You'll be redirected to the dashboard
+
+### Dashboard
+
+After logging in, you'll see:
+- Welcome message with your email
+- Authentication status
+- System features overview
+- Sign out button
+
+## 🗂️ Project Structure
+
+```
+src/
+├── app/
+│   ├── api/
+│   │   └── auth/
+│   │       ├── [...nextauth]/
+│   │       │   └── route.ts          # NextAuth configuration
+│   │       └── register/
+│   │           └── route.ts          # Registration API endpoint
+│   ├── dashboard/
+│   │   └── page.tsx                  # Protected dashboard page
+│   ├── register/
+│   │   └── page.tsx                  # Registration page
+│   ├── page.tsx                      # Login page (homepage)
+│   ├── layout.tsx                    # Root layout with AuthProvider
+│   ├── providers.tsx                 # NextAuth SessionProvider wrapper
+│   └── globals.css                   # Design system & styles
+├── db/
+│   ├── index.ts                      # Database connection
+│   └── schema.ts                     # Database schema (users table)
+└── scripts/
+    └── setup-db.ts                   # Database setup script
+```
+
+## 🔒 Security Features
+
+- **Password Hashing**: All passwords are hashed using bcrypt with a cost factor of 10
+- **Email Uniqueness**: Duplicate email addresses are prevented at the database level
+- **Input Validation**: Email format and password length validation
+- **Session Security**: JWT tokens with secure secret
+- **Protected Routes**: Dashboard requires authentication
+- **HTTPS Only**: Production cookies are secure and HTTP-only
+
+## 🎨 Design System
+
+The application uses a modern design system with:
+
+- **Dark Theme**: Professional dark background with vibrant accents
+- **Glassmorphism**: Frosted glass effects on cards and navigation
+- **Gradient Text**: Eye-catching purple-to-blue gradients
+- **Smooth Animations**: Fade-in, slide, and hover effects
+- **Custom Colors**: Purple (#8b5cf6), Blue (#38bdf8), Pink (#ec4899)
+- **Typography**: Inter for body text, Space Grotesk for headings
+
+## 🛠️ Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Authentication**: NextAuth.js v5 (beta)
+- **Database**: Neon Postgres
+- **ORM**: Drizzle ORM
+- **Styling**: Tailwind CSS + Custom CSS
+- **Password Hashing**: bcryptjs
+- **TypeScript**: Full type safety
+
+## 📝 Next Steps
+
+Now that authentication is set up, you can:
+
+1. Add more user fields (name, profile picture, etc.)
+2. Implement password reset functionality
+3. Add email verification
+4. Create user profile pages
+5. Add role-based access control (admin, user, etc.)
+6. Build your application features in the dashboard
+
+## 🐛 Troubleshooting
+
+### "NEXTAUTH_SECRET is not set" error
+
+Make sure you've added `NEXTAUTH_SECRET` to your `.env.local` file.
+
+### "DATABASE_URL is not set" error
+
+Check that your `.env.local` file contains the `DATABASE_URL` from Neon.
+
+### Can't log in after registration
+
+Make sure the database setup script ran successfully and the users table was created.
+
+### Redirect loop on login
+
+Verify that `NEXTAUTH_URL` matches your current environment (localhost for dev, your domain for production).
+
+## 📄 License
+
+This project is private and proprietary.

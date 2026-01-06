@@ -1,22 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AuthProvider from "./providers";
 
 export const metadata: Metadata = {
-  title: "TechChannel - Learn Web Development & Technology",
-  description: "Join over 500K subscribers learning web development, design, and technology through high-quality tutorials and courses. Master React, Next.js, TypeScript, and more.",
-  keywords: ["web development", "programming", "tutorials", "react", "nextjs", "typescript", "coding", "youtube channel"],
-  authors: [{ name: "TechChannel" }],
-  openGraph: {
-    title: "TechChannel - Learn Web Development & Technology",
-    description: "Join over 500K subscribers learning web development through high-quality tutorials",
-    type: "website",
-    locale: "en_US",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "TechChannel - Learn Web Development & Technology",
-    description: "Join over 500K subscribers learning web development through high-quality tutorials",
-  },
+  title: "User Authentication System",
+  description: "Secure login and registration system",
+  keywords: ["authentication", "login", "user management"],
+  authors: [{ name: "Your App" }],
   viewport: "width=device-width, initial-scale=1",
   themeColor: "#8b5cf6",
 };
@@ -33,7 +23,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="antialiased">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
