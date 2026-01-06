@@ -1,20 +1,19 @@
 import NextAuth from 'next-auth';
-import type { AuthOptions, User } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
+import type { NextAuthConfig } from 'next-auth';
+import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
-export const authOptions: AuthOptions = {
+const authConfig: NextAuthConfig = {
     providers: [
-        CredentialsProvider({
-            name: 'Credentials',
+        Credentials({
             credentials: {
                 email: { label: 'Email', type: 'email' },
                 password: { label: 'Password', type: 'password' },
             },
-            async authorize(credentials): Promise<User | null> {
+            async authorize(credentials) {
                 if (!credentials?.email || !credentials?.password) {
                     return null;
                 }
@@ -23,7 +22,7 @@ export const authOptions: AuthOptions = {
                     const userResult = await db
                         .select()
                         .from(users)
-                        .where(eq(users.email, credentials.email.toLowerCase()))
+                        .where(eq(users.email, (credentials.email as string).toLowerCase()))
                         .limit(1);
 
                     if (userResult.length === 0) {
@@ -32,7 +31,7 @@ export const authOptions: AuthOptions = {
 
                     const user = userResult[0];
                     const isPasswordValid = await bcrypt.compare(
-                        credentials.password,
+                        credentials.password as string,
                         user.password
                     );
 
@@ -76,12 +75,5 @@ export const authOptions: AuthOptions = {
     secret: process.env.NEXTAUTH_SECRET,
 };
 
-const handler = NextAuth(authOptions);
-
-// Export with proper Next.js 16 App Router types
-export const GET = handler;
-export const POST = handler;
-
-// Add runtime config to satisfy Next.js 16 requirements
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+const { handlers } = NextAuth(authConfig);
+export const { GET, POST } = handlers;
