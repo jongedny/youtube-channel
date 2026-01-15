@@ -4,6 +4,9 @@ import { scenarios, characters, images } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { put } from '@vercel/blob';
 
+// Version: 2.0 - Using Imagen 4
+const API_VERSION = '2.0-imagen4';
+
 export async function POST(request: NextRequest) {
     try {
         const { scenarioId } = await request.json();
@@ -16,6 +19,7 @@ export async function POST(request: NextRequest) {
         }
 
         console.log(`🎨 Generating image for scenario ${scenarioId}...`);
+        console.log(`📌 API Version: ${API_VERSION}`);
 
         // Get the scenario
         const scenario = await db.query.scenarios.findFirst({
