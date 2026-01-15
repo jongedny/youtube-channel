@@ -62,9 +62,9 @@ Art style: Dramatic cinematic composition with a slightly surreal, VHS-tape aest
 
             console.log('🎨 Calling Imagen API...');
 
-            // Call Imagen 3 API with correct endpoint
+            // Call Imagen 3 API with correct endpoint (generateContent, not predict)
             const response = await fetch(
-                'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict',
+                'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateContent',
                 {
                     method: 'POST',
                     headers: {
@@ -72,13 +72,15 @@ Art style: Dramatic cinematic composition with a slightly surreal, VHS-tape aest
                         'x-goog-api-key': apiKey,
                     },
                     body: JSON.stringify({
-                        instances: [{
-                            prompt: imagePrompt
+                        contents: [{
+                            parts: [{
+                                text: imagePrompt
+                            }]
                         }],
-                        parameters: {
-                            sampleCount: 1,
+                        generationConfig: {
+                            responseModalities: ['image'],
                             aspectRatio: '16:9',
-                        },
+                        }
                     }),
                 }
             );
@@ -93,10 +95,9 @@ Art style: Dramatic cinematic composition with a slightly surreal, VHS-tape aest
             console.log('✅ Image generated successfully');
             console.log('📦 Response data:', JSON.stringify(data, null, 2));
 
-            // Extract the base64 image data - try different possible response formats
-            let imageData = data.predictions?.[0]?.bytesBase64Encoded
-                || data.predictions?.[0]?.image?.bytesBase64Encoded
-                || data.generatedImages?.[0]?.image?.imageBytes;
+            // Extract the base64 image data from generateContent response
+            // Response format: { candidates: [{ content: { parts: [{ inlineData: { mimeType, data } }] } }] }
+            let imageData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 
             if (!imageData) {
                 console.error('❌ Response structure:', JSON.stringify(data, null, 2));
