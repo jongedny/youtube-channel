@@ -1,0 +1,12 @@
+{
+    "crons": [
+        {
+            "path": "/api/cron/daily-scenario",
+            "schedule": "0 9 * * *"
+        },
+        {
+            "path": "/api/cron/weekly-character",
+            "schedule": "0 9 * * 1"
+        }
+    ]
+}
