@@ -74,7 +74,7 @@ Add environment variables:
 - `DATABASE_URL` (from Neon)
 - `NEXTAUTH_SECRET` (existing)
 - `NEXTAUTH_URL` (your production URL)
-- `GEMINI_API_KEY` (already set: AIzaSyBS3ze0FHVFdjOGEUs6l5IkjW-6cgLLmKA)
+- `GEMINI_API_KEY` (get from Google AI Studio)
 - `CRON_SECRET` (generate with: `openssl rand -base64 32`)
 
 ## 🎯 How It Works
