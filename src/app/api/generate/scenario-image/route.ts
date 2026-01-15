@@ -62,9 +62,9 @@ Art style: Dramatic cinematic composition with a slightly surreal, VHS-tape aest
 
             console.log('🎨 Calling Imagen API...');
 
-            // Call Imagen 3 API with correct endpoint (generateContent, not predict)
+            // Call Imagen 4 API (Imagen 3 is not available via Gemini API)
             const response = await fetch(
-                'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateContent',
+                'https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:generateContent',
                 {
                     method: 'POST',
                     headers: {
@@ -124,7 +124,7 @@ Art style: Dramatic cinematic composition with a slightly surreal, VHS-tape aest
                 scenarioId: scenarioId,
                 url: imageUrl,
                 prompt: imagePrompt,
-                generatedBy: 'imagen-3',
+                generatedBy: 'imagen-4',
             }).returning();
 
             console.log('✅ Image record created:', newImage.id);
