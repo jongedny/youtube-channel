@@ -259,7 +259,7 @@ export default function DashboardPage() {
                         <h2 className="mb-4 text-2xl font-bold text-white">Characters ({characters.length})</h2>
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {characters.map((char) => (
-                                <div key={char.id} className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+                                <div key={char.id} className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
                                     <div className="mb-2 flex items-start justify-between">
                                         <div>
                                             <h3 className="font-bold text-white">{char.name}</h3>
@@ -289,7 +289,7 @@ export default function DashboardPage() {
                         <h2 className="mb-4 text-2xl font-bold text-white">Scenarios ({scenarios.length})</h2>
                         <div className="space-y-6">
                             {scenarios.map((scenario) => (
-                                <div key={scenario.id} className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+                                <div key={scenario.id} className="rounded-xl border border-gray-800 bg-gray-900/50 p-6">
                                     <div className="mb-3 flex items-start justify-between">
                                         <h3 className="text-lg font-bold text-white">{scenario.title}</h3>
                                         <span className="text-xs text-gray-500">
