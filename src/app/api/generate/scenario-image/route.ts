@@ -80,11 +80,7 @@ Art style: Dramatic cinematic composition with a slightly surreal, VHS-tape aest
                             parts: [{
                                 text: imagePrompt
                             }]
-                        }],
-                        generationConfig: {
-                            aspect_ratio: '16:9',
-                            num_images: 1,
-                        }
+                        }]
                     }),
                 }
             );
