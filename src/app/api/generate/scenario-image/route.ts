@@ -4,8 +4,8 @@ import { scenarios, characters, images } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { put } from '@vercel/blob';
 
-// Version: 2.0 - Using Imagen 4
-const API_VERSION = '2.0-imagen4';
+// Version: 3.0 - Using Gemini 2.5 Flash Image
+const API_VERSION = '3.0-gemini-flash-image';
 
 export async function POST(request: NextRequest) {
     try {
@@ -66,9 +66,9 @@ Art style: Dramatic cinematic composition with a slightly surreal, VHS-tape aest
 
             console.log('🎨 Calling Imagen API...');
 
-            // Call Imagen 4 API (Imagen 3 is not available via Gemini API)
+            // Use Gemini 2.5 Flash Image (Imagen models not available via Gemini API)
             const response = await fetch(
-                'https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:generateContent',
+                'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent',
                 {
                     method: 'POST',
                     headers: {
@@ -124,7 +124,7 @@ Art style: Dramatic cinematic composition with a slightly surreal, VHS-tape aest
                 scenarioId: scenarioId,
                 url: imageUrl,
                 prompt: imagePrompt,
-                generatedBy: 'imagen-4',
+                generatedBy: 'gemini-2.5-flash-image',
             }).returning();
 
             console.log('✅ Image record created:', newImage.id);
