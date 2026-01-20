@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { scenarios, characters, videos } from '@/db/schema';
+import { scenarios, characters, videos, images } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { put } from '@vercel/blob';
 
-// Version: 1.0 - Using Veo 3.1 Fast
-const API_VERSION = '1.0-veo-3.1-fast';
+// Version: 2.0 - Using Veo 3.1 Fast with image reference
+const API_VERSION = '2.0-veo-3.1-fast-with-image';
 
 export async function POST(request: NextRequest) {
     try {
@@ -32,6 +32,11 @@ export async function POST(request: NextRequest) {
                 { status: 404 }
             );
         }
+
+        // Get the scenario image for reference
+        const scenarioImage = await db.query.images.findFirst({
+            where: eq(images.scenarioId, scenarioId),
+        });
 
         // Get the characters involved in this scenario
         const characterIds = JSON.parse(scenario.characterIds);
@@ -64,6 +69,34 @@ Visual style: Dramatic cinematic shot with VHS-tape aesthetic. Vibrant, saturate
                 throw new Error('GEMINI_API_KEY not found');
             }
 
+            // Prepare the request parts
+            const requestParts: any[] = [{
+                text: videoPrompt
+            }];
+
+            // If there's an image, fetch it and include as reference
+            if (scenarioImage) {
+                console.log('🖼️ Fetching reference image from:', scenarioImage.url);
+                try {
+                    const imageResponse = await fetch(scenarioImage.url);
+                    const imageBuffer = await imageResponse.arrayBuffer();
+                    const imageBase64 = Buffer.from(imageBuffer).toString('base64');
+
+                    // Add image as inline data
+                    requestParts.push({
+                        inlineData: {
+                            mimeType: 'image/png',
+                            data: imageBase64
+                        }
+                    });
+                    console.log('✅ Reference image included in request');
+                } catch (imageError) {
+                    console.warn('⚠️ Could not fetch reference image, proceeding without it:', imageError);
+                }
+            } else {
+                console.log('ℹ️ No reference image found for this scenario');
+            }
+
             console.log('🎬 Calling Veo API...');
 
             // Call Veo 3.1 Fast API
@@ -77,9 +110,7 @@ Visual style: Dramatic cinematic shot with VHS-tape aesthetic. Vibrant, saturate
                     },
                     body: JSON.stringify({
                         contents: [{
-                            parts: [{
-                                text: videoPrompt
-                            }]
+                            parts: requestParts
                         }]
                     }),
                 }
