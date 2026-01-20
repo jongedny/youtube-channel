@@ -4,8 +4,8 @@ import { scenarios, characters, videos, images } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { put } from '@vercel/blob';
 
-// Version: 4.0 - Using Veo 3.1 Fast Preview with reference image support
-const API_VERSION = '4.0-veo-3.1-fast-preview-with-image';
+// Version: 5.0 - Using Veo 3.1 Preview (standard, not fast) with reference image support
+const API_VERSION = '5.0-veo-3.1-preview-with-image';
 
 export async function POST(request: NextRequest) {
     try {
@@ -104,9 +104,9 @@ Visual style: Dramatic cinematic shot with VHS-tape aesthetic. Vibrant, saturate
 
             console.log('🎬 Calling Veo API...');
 
-            // Call Veo 3.1 Fast Preview API (async operation)
+            // Call Veo 3.1 Preview API (standard variant supports reference images)
             const response = await fetch(
-                'https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-fast-generate-preview:predictLongRunning',
+                'https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning',
                 {
                     method: 'POST',
                     headers: {
@@ -202,7 +202,7 @@ Visual style: Dramatic cinematic shot with VHS-tape aesthetic. Vibrant, saturate
                 scenarioId: scenarioId,
                 url: videoUrl,
                 prompt: videoPrompt,
-                generatedBy: 'veo-3.1-fast-preview',
+                generatedBy: 'veo-3.1-preview',
             }).returning();
 
             console.log('✅ Video record created:', newVideo.id);
