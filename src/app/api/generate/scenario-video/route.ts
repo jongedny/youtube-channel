@@ -3,10 +3,9 @@ import { db } from '@/db';
 import { scenarios, characters, videos, images } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { put } from '@vercel/blob';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Version: 7.0 - Using Google Generative AI SDK for video generation
-const API_VERSION = '7.0-veo-sdk';
+// Version: 5.0 - Using Veo 3.1 Preview (standard, not fast) with reference image support
+const API_VERSION = '5.0-veo-3.1-preview-with-image';
 
 export async function POST(request: NextRequest) {
     try {
@@ -63,22 +62,27 @@ Visual style: Dramatic cinematic shot with VHS-tape aesthetic. Vibrant, saturate
 
         console.log('📝 Video prompt:', videoPrompt);
 
-        // Generate video using Google Generative AI SDK
+        // Generate video using Veo 3.1 Fast Preview
         try {
             const apiKey = process.env.GEMINI_API_KEY;
             if (!apiKey) {
                 throw new Error('GEMINI_API_KEY not found');
             }
 
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: 'veo-3.1-generate-preview' });
+            // Prepare the request body for Veo
+            const requestBody: any = {
+                instances: [{
+                    prompt: videoPrompt
+                }],
+                parameters: {
+                    aspectRatio: '16:9',
+                    sampleCount: 1
+                }
+            };
 
-            console.log('🎬 Calling Veo API via SDK...');
-
-            // Prepare request parts
-            const parts: any[] = [{ text: videoPrompt }];
-
-            // Add reference image if available
+            // TODO: Reference images causing 400 error - need to investigate correct format
+            // Temporarily disabled to get basic video generation working
+            /*
             if (scenarioImage) {
                 console.log('🖼️ Fetching reference image from:', scenarioImage.url);
                 try {
@@ -86,90 +90,136 @@ Visual style: Dramatic cinematic shot with VHS-tape aesthetic. Vibrant, saturate
                     const imageBuffer = await imageResponse.arrayBuffer();
                     const imageBase64 = Buffer.from(imageBuffer).toString('base64');
 
-                    console.log('📊 Base64 length:', imageBase64.length);
-
-                    // Add inline data for reference image
-                    parts.push({
-                        inlineData: {
-                            mimeType: 'image/png',
-                            data: imageBase64
+                    // Add reference image using correct REST API format
+                    requestBody.instances[0].reference_images = [{
+                        referenceType: 'asset',
+                        image: {
+                            bytesBase64Encoded: imageBase64,
+                            mimeType: 'image/png'
                         }
-                    });
-                    console.log('✅ Reference image included in SDK request');
+                    }];
+                    console.log('✅ Reference image included in request');
                 } catch (imageError) {
                     console.warn('⚠️ Could not fetch reference image, proceeding without it:', imageError);
                 }
             }
+            */
+            if (scenarioImage) {
+                console.log('ℹ️ Reference image available but temporarily disabled due to API errors');
+            }
 
-            // Generate content (this should start the async operation)
-            console.log('⏳ Starting video generation...');
-            const result = await model.generateContent({
-                contents: [{ role: 'user', parts }],
+            console.log('🎬 Calling Veo API...');
+
+            // Call Veo 3.1 Preview API (standard variant supports reference images)
+            const response = await fetch(
+                'https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': apiKey,
+                    },
+                    body: JSON.stringify(requestBody),
+                }
+            );
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ Veo API error:', errorText);
+                throw new Error(`Veo API failed: ${response.status} - ${errorText}`);
+            }
+
+            const operationData = await response.json();
+            const operationName = operationData.name;
+
+            if (!operationName) {
+                throw new Error('No operation name returned from Veo API');
+            }
+
+            console.log('⏳ Video generation started, operation:', operationName);
+            console.log('⏱️ Polling for completion (this may take 30-60 seconds)...');
+
+            // Poll for completion
+            let videoUri: string | null = null;
+            let attempts = 0;
+            const maxAttempts = 60; // 5 minutes max (5 second intervals)
+
+            while (!videoUri && attempts < maxAttempts) {
+                attempts++;
+                await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+
+                const statusResponse = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/${operationName}`,
+                    {
+                        headers: {
+                            'x-goog-api-key': apiKey,
+                        },
+                    }
+                );
+
+                const statusData = await statusResponse.json();
+
+                if (statusData.done) {
+                    videoUri = statusData.response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri;
+                    if (videoUri) {
+                        console.log('✅ Video generation complete!');
+                        console.log('📥 Video URI:', videoUri);
+                    } else {
+                        console.error('❌ Operation completed but no video URI found:', JSON.stringify(statusData, null, 2));
+                        throw new Error('Video generation completed but no URI returned');
+                    }
+                } else {
+                    console.log(`⏳ Still generating... (attempt ${attempts}/${maxAttempts})`);
+                }
+            }
+
+            if (!videoUri) {
+                throw new Error('Video generation timed out after 5 minutes');
+            }
+
+            // Download the video from the URI
+            console.log('📥 Downloading video...');
+            const videoResponse = await fetch(videoUri, {
+                headers: {
+                    'x-goog-api-key': apiKey,
+                },
             });
 
-            console.log('📦 SDK Response:', JSON.stringify(result, null, 2));
-
-            // The SDK might return the operation differently
-            // Let's see what we get and handle it
-            const response = result.response;
-
-            // Try to extract video data or operation info
-            if (response.candidates && response.candidates[0]) {
-                const candidate = response.candidates[0];
-                console.log('📦 Candidate:', JSON.stringify(candidate, null, 2));
-
-                // Check if there's inline video data
-                if (candidate.content?.parts?.[0]?.inlineData) {
-                    const videoData = candidate.content.parts[0].inlineData.data;
-                    const mimeType = candidate.content.parts[0].inlineData.mimeType || 'video/mp4';
-
-                    console.log('✅ Video data received inline');
-
-                    // Convert base64 to buffer
-                    const videoBuffer = Buffer.from(videoData, 'base64');
-
-                    // Upload to Vercel Blob storage
-                    const filename = `scenario-${scenarioId}-${Date.now()}.mp4`;
-                    console.log('☁️ Uploading to Vercel Blob...');
-
-                    const blob = await put(filename, videoBuffer, {
-                        access: 'public',
-                        contentType: mimeType,
-                    });
-
-                    const videoUrl = blob.url;
-                    console.log('💾 Video uploaded to:', videoUrl);
-
-                    // Store the video in the database
-                    const [newVideo] = await db.insert(videos).values({
-                        scenarioId: scenarioId,
-                        url: videoUrl,
-                        prompt: videoPrompt,
-                        generatedBy: 'veo-3.1-preview-sdk',
-                    }).returning();
-
-                    console.log('✅ Video record created:', newVideo.id);
-
-                    return NextResponse.json({
-                        success: true,
-                        video: newVideo,
-                    });
-                } else {
-                    // If not inline, might need to poll or get operation
-                    console.error('❌ No inline video data found in response');
-                    console.error('Response structure:', JSON.stringify(response, null, 2));
-                    throw new Error('SDK did not return video data in expected format');
-                }
-            } else {
-                throw new Error('No candidates in SDK response');
+            if (!videoResponse.ok) {
+                throw new Error(`Failed to download video: ${videoResponse.status}`);
             }
+
+            const videoBuffer = await videoResponse.arrayBuffer();
+
+            // Upload to Vercel Blob storage
+            const filename = `scenario-${scenarioId}-${Date.now()}.mp4`;
+            console.log('☁️ Uploading to Vercel Blob...');
+
+            const blob = await put(filename, Buffer.from(videoBuffer), {
+                access: 'public',
+                contentType: 'video/mp4',
+            });
+
+            const videoUrl = blob.url;
+            console.log('💾 Video uploaded to:', videoUrl);
+
+            // Store the video in the database
+            const [newVideo] = await db.insert(videos).values({
+                scenarioId: scenarioId,
+                url: videoUrl,
+                prompt: videoPrompt,
+                generatedBy: 'veo-3.1-preview',
+            }).returning();
+
+            console.log('✅ Video record created:', newVideo.id);
+
+            return NextResponse.json({
+                success: true,
+                video: newVideo,
+            });
 
         } catch (videoError: any) {
             console.error('❌ Video generation failed:', videoError);
-            console.error('Error details:', videoError.message);
-            if (videoError.response) {
-                console.error('Error response:', JSON.stringify(videoError.response, null, 2));
-            }
 
             // Return error without creating placeholder
             return NextResponse.json({
