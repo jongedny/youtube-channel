@@ -4,8 +4,8 @@ import { scenarios, characters, videos, images } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { put } from '@vercel/blob';
 
-// Version: 5.0 - Using Veo 3.1 Preview (standard, not fast) with reference image support
-const API_VERSION = '5.0-veo-3.1-preview-with-image';
+// Version: 6.0 - Using Veo 3.1 Preview with reference image (clean base64)
+const API_VERSION = '6.0-veo-3.1-preview-with-clean-base64';
 
 export async function POST(request: NextRequest) {
     try {
@@ -62,7 +62,7 @@ Visual style: Dramatic cinematic shot with VHS-tape aesthetic. Vibrant, saturate
 
         console.log('📝 Video prompt:', videoPrompt);
 
-        // Generate video using Veo 3.1 Fast Preview
+        // Generate video using Veo 3.1 Preview (standard variant supports reference images)
         try {
             const apiKey = process.env.GEMINI_API_KEY;
             if (!apiKey) {
@@ -80,15 +80,23 @@ Visual style: Dramatic cinematic shot with VHS-tape aesthetic. Vibrant, saturate
                 }
             };
 
-            // TODO: Reference images causing 400 error - need to investigate correct format
-            // Temporarily disabled to get basic video generation working
-            /*
+            // Add reference image if available
             if (scenarioImage) {
                 console.log('🖼️ Fetching reference image from:', scenarioImage.url);
                 try {
                     const imageResponse = await fetch(scenarioImage.url);
                     const imageBuffer = await imageResponse.arrayBuffer();
+
+                    // Convert to base64 - ensure it's pure base64 without data URI prefix
                     const imageBase64 = Buffer.from(imageBuffer).toString('base64');
+
+                    // Verify it doesn't start with data URI prefix
+                    if (imageBase64.startsWith('data:')) {
+                        throw new Error('Base64 string has data URI prefix - this should not happen');
+                    }
+
+                    console.log('📊 Base64 length:', imageBase64.length);
+                    console.log('📊 First 50 chars:', imageBase64.substring(0, 50));
 
                     // Add reference image using correct REST API format
                     requestBody.instances[0].reference_images = [{
@@ -102,10 +110,6 @@ Visual style: Dramatic cinematic shot with VHS-tape aesthetic. Vibrant, saturate
                 } catch (imageError) {
                     console.warn('⚠️ Could not fetch reference image, proceeding without it:', imageError);
                 }
-            }
-            */
-            if (scenarioImage) {
-                console.log('ℹ️ Reference image available but temporarily disabled due to API errors');
             }
 
             console.log('🎬 Calling Veo API...');
