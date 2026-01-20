@@ -4,8 +4,8 @@ import { scenarios, characters, videos, images } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { put } from '@vercel/blob';
 
-// Version: 3.0 - Using Veo 3.1 Fast Preview with async polling
-const API_VERSION = '3.0-veo-3.1-fast-preview';
+// Version: 4.0 - Using Veo 3.1 Fast Preview with reference image support
+const API_VERSION = '4.0-veo-3.1-fast-preview-with-image';
 
 export async function POST(request: NextRequest) {
     try {
@@ -73,14 +73,30 @@ Visual style: Dramatic cinematic shot with VHS-tape aesthetic. Vibrant, saturate
             const requestBody: any = {
                 instances: [{
                     prompt: videoPrompt
-                }]
+                }],
+                parameters: {
+                    aspectRatio: '16:9',
+                    sampleCount: 1
+                }
             };
 
-            // TODO: Add reference image support once we find the correct REST API format
-            // The Python SDK uses a different structure than the REST API
+            // Add reference image if available
             if (scenarioImage) {
-                console.log('ℹ️ Reference image available but format not yet supported in REST API');
-                console.log('🖼️ Image URL:', scenarioImage.url);
+                console.log('🖼️ Fetching reference image from:', scenarioImage.url);
+                try {
+                    const imageResponse = await fetch(scenarioImage.url);
+                    const imageBuffer = await imageResponse.arrayBuffer();
+                    const imageBase64 = Buffer.from(imageBuffer).toString('base64');
+
+                    // Add reference image using correct REST API format
+                    requestBody.instances[0].reference_images = [{
+                        bytesBase64Encoded: imageBase64,
+                        mimeType: 'image/png'
+                    }];
+                    console.log('✅ Reference image included in request');
+                } catch (imageError) {
+                    console.warn('⚠️ Could not fetch reference image, proceeding without it:', imageError);
+                }
             }
 
             console.log('🎬 Calling Veo API...');
