@@ -97,6 +97,19 @@ Art style: Dramatic cinematic composition with a slightly surreal, VHS-tape aest
 
             // Extract the base64 image data from generateContent response
             // Response format: { candidates: [{ content: { parts: [{ inlineData: { mimeType, data } }] } }] }
+            console.log('🔍 Checking response structure...');
+            console.log('Has candidates?', !!data.candidates);
+            console.log('Candidates length:', data.candidates?.length);
+            if (data.candidates?.[0]) {
+                console.log('Has content?', !!data.candidates[0].content);
+                console.log('Has parts?', !!data.candidates[0].content?.parts);
+                console.log('Parts length:', data.candidates[0].content?.parts?.length);
+                if (data.candidates[0].content?.parts?.[0]) {
+                    console.log('Part 0 keys:', Object.keys(data.candidates[0].content.parts[0]));
+                    console.log('Has inlineData?', !!data.candidates[0].content.parts[0].inlineData);
+                }
+            }
+
             let imageData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 
             if (!imageData) {
