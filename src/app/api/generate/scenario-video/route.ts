@@ -80,7 +80,9 @@ Visual style: Dramatic cinematic shot with VHS-tape aesthetic. Vibrant, saturate
                 }
             };
 
-            // Add reference image if available
+            // TODO: Reference images causing 400 error - need to investigate correct format
+            // Temporarily disabled to get basic video generation working
+            /*
             if (scenarioImage) {
                 console.log('🖼️ Fetching reference image from:', scenarioImage.url);
                 try {
@@ -100,6 +102,10 @@ Visual style: Dramatic cinematic shot with VHS-tape aesthetic. Vibrant, saturate
                 } catch (imageError) {
                     console.warn('⚠️ Could not fetch reference image, proceeding without it:', imageError);
                 }
+            }
+            */
+            if (scenarioImage) {
+                console.log('ℹ️ Reference image available but temporarily disabled due to API errors');
             }
 
             console.log('🎬 Calling Veo API...');
