@@ -90,8 +90,11 @@ Visual style: Dramatic cinematic shot with VHS-tape aesthetic. Vibrant, saturate
 
                     // Add reference image using correct REST API format
                     requestBody.instances[0].reference_images = [{
-                        bytesBase64Encoded: imageBase64,
-                        mimeType: 'image/png'
+                        referenceType: 'asset',
+                        image: {
+                            bytesBase64Encoded: imageBase64,
+                            mimeType: 'image/png'
+                        }
                     }];
                     console.log('✅ Reference image included in request');
                 } catch (imageError) {
