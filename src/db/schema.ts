@@ -64,4 +64,10 @@ export const videos = pgTable('videos', {
     duration: integer('duration'), // in seconds
     generatedBy: varchar('generated_by', { length: 50 }).default('gemini').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
+    // YouTube integration fields
+    youtubeId: varchar('youtube_id', { length: 100 }), // YouTube video ID
+    youtubeUrl: varchar('youtube_url', { length: 500 }), // Full YouTube URL
+    uploadStatus: varchar('upload_status', { length: 50 }).default('pending'), // 'pending', 'uploading', 'completed', 'failed'
+    uploadedAt: timestamp('uploaded_at'),
+    uploadError: text('upload_error'), // Error message if upload failed
 });

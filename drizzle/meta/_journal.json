@@ -15,6 +15,13 @@
       "when": 1768393333772,
       "tag": "0001_jazzy_loki",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769012670161,
+      "tag": "0002_supreme_firebird",
+      "breakpoints": true
     }
   ]
 }
