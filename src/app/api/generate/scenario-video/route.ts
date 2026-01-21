@@ -3,10 +3,9 @@ import { db } from '@/db';
 import { scenarios, characters, videos, images } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { put } from '@vercel/blob';
-import { GoogleAuth } from 'google-auth-library';
 
-// Version: 8.0 - Using Vertex AI REST API for video generation with reference images
-const API_VERSION = '8.0-vertex-ai-rest';
+// Version: 9.0 - Back to working Gemini API (text-to-video only, no reference images)
+const API_VERSION = '9.0-gemini-api-text-only';
 
 export async function POST(request: NextRequest) {
     try {
@@ -34,7 +33,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Get the scenario image for reference
+        // Get the scenario image for reference (informational only)
         const scenarioImage = await db.query.images.findFirst({
             where: eq(images.scenarioId, scenarioId),
         });
@@ -63,150 +62,142 @@ Visual style: Dramatic cinematic shot with VHS-tape aesthetic. Vibrant, saturate
 
         console.log('📝 Video prompt:', videoPrompt);
 
-        // Generate video using Vertex AI REST API
+        if (scenarioImage) {
+            console.log('ℹ️ Reference image available but not supported via Gemini API');
+            console.log('🖼️ Image URL:', scenarioImage.url);
+            console.log('💡 Note: Reference images require Vertex AI (not currently configured)');
+        }
+
+        // Generate video using Gemini API (text-to-video only)
         try {
-            const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
-            const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
-            const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-
-            if (!projectId || !credentialsJson) {
-                throw new Error('Missing required Vertex AI credentials');
+            const apiKey = process.env.GEMINI_API_KEY;
+            if (!apiKey) {
+                throw new Error('GEMINI_API_KEY not found');
             }
 
-            // Parse credentials
-            const credentials = JSON.parse(credentialsJson);
-
-            // Get access token using GoogleAuth
-            const auth = new GoogleAuth({
-                credentials,
-                scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-            });
-
-            const client = await auth.getClient();
-            const accessToken = await client.getAccessToken();
-
-            if (!accessToken.token) {
-                throw new Error('Failed to get access token');
-            }
-
-            console.log('✅ Got access token');
-
-            // Prepare the instance
-            const instance: any = {
-                prompt: videoPrompt,
-            };
-
-            // Add reference image if available
-            if (scenarioImage) {
-                console.log('🖼️ Fetching reference image from:', scenarioImage.url);
-                try {
-                    const imageResponse = await fetch(scenarioImage.url);
-                    const imageBuffer = await imageResponse.arrayBuffer();
-                    const imageBase64 = Buffer.from(imageBuffer).toString('base64');
-
-                    console.log('📊 Base64 length:', imageBase64.length);
-
-                    // Add reference image
-                    instance.referenceImages = [{
-                        referenceType: 'asset',
-                        image: {
-                            bytesBase64Encoded: imageBase64,
-                            mimeType: 'image/png'
-                        }
-                    }];
-                    console.log('✅ Reference image included in Vertex AI request');
-                } catch (imageError) {
-                    console.warn('⚠️ Could not fetch reference image, proceeding without it:', imageError);
+            // Prepare the request body for Veo (text-only)
+            const requestBody = {
+                instances: [{
+                    prompt: videoPrompt
+                }],
+                parameters: {
+                    aspectRatio: '16:9',
+                    sampleCount: 1
                 }
-            }
-
-            // Parameters for video generation
-            const parameters = {
-                aspectRatio: '16:9',
-                sampleCount: 1,
             };
 
-            const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/veo-3.1-generate-preview:predict`;
+            console.log('🎬 Calling Veo API...');
 
-            console.log('🎬 Calling Vertex AI REST API...');
-            console.log('📍 Endpoint:', endpoint);
-
-            // Make the prediction request
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken.token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    instances: [instance],
-                    parameters,
-                }),
-            });
+            // Call Veo 3.1 Preview API
+            const response = await fetch(
+                'https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': apiKey,
+                    },
+                    body: JSON.stringify(requestBody),
+                }
+            );
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('❌ Vertex AI error:', errorText);
-                throw new Error(`Vertex AI failed: ${response.status} - ${errorText}`);
+                console.error('❌ Veo API error:', errorText);
+                throw new Error(`Veo API failed: ${response.status} - ${errorText}`);
             }
 
-            const data = await response.json();
-            console.log('📦 Vertex AI Response:', JSON.stringify(data, null, 2));
+            const operationData = await response.json();
+            const operationName = operationData.name;
 
-            // Extract video data from response
-            if (data.predictions && data.predictions.length > 0) {
-                const prediction = data.predictions[0];
+            if (!operationName) {
+                throw new Error('No operation name returned from Veo API');
+            }
 
-                console.log('📦 Prediction:', JSON.stringify(prediction, null, 2));
+            console.log('⏳ Video generation started, operation:', operationName);
+            console.log('⏱️ Polling for completion (this may take 30-60 seconds)...');
 
-                // Try to extract video data
-                const videoData = prediction.video?.bytesBase64Encoded ||
-                    prediction.bytesBase64Encoded;
+            // Poll for completion
+            let videoUri: string | null = null;
+            let attempts = 0;
+            const maxAttempts = 60; // 5 minutes max (5 second intervals)
 
-                if (videoData) {
-                    console.log('✅ Video data received from Vertex AI');
+            while (!videoUri && attempts < maxAttempts) {
+                attempts++;
+                await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
 
-                    // Convert base64 to buffer
-                    const videoBuffer = Buffer.from(videoData, 'base64');
+                const statusResponse = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/${operationName}`,
+                    {
+                        headers: {
+                            'x-goog-api-key': apiKey,
+                        },
+                    }
+                );
 
-                    // Upload to Vercel Blob storage
-                    const filename = `scenario-${scenarioId}-${Date.now()}.mp4`;
-                    console.log('☁️ Uploading to Vercel Blob...');
+                const statusData = await statusResponse.json();
 
-                    const blob = await put(filename, videoBuffer, {
-                        access: 'public',
-                        contentType: 'video/mp4',
-                    });
-
-                    const videoUrl = blob.url;
-                    console.log('💾 Video uploaded to:', videoUrl);
-
-                    // Store the video in the database
-                    const [newVideo] = await db.insert(videos).values({
-                        scenarioId: scenarioId,
-                        url: videoUrl,
-                        prompt: videoPrompt,
-                        generatedBy: 'veo-3.1-vertex-ai',
-                    }).returning();
-
-                    console.log('✅ Video record created:', newVideo.id);
-
-                    return NextResponse.json({
-                        success: true,
-                        video: newVideo,
-                    });
+                if (statusData.done) {
+                    videoUri = statusData.response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri;
+                    if (videoUri) {
+                        console.log('✅ Video generation complete!');
+                        console.log('📥 Video URI:', videoUri);
+                    } else {
+                        console.error('❌ Operation completed but no video URI found:', JSON.stringify(statusData, null, 2));
+                        throw new Error('Video generation completed but no URI returned');
+                    }
                 } else {
-                    console.error('❌ No video data in Vertex AI response');
-                    console.error('Response structure:', JSON.stringify(data, null, 2));
-                    throw new Error('Vertex AI did not return video data');
+                    console.log(`⏳ Still generating... (attempt ${attempts}/${maxAttempts})`);
                 }
-            } else {
-                throw new Error('No predictions in Vertex AI response');
             }
+
+            if (!videoUri) {
+                throw new Error('Video generation timed out after 5 minutes');
+            }
+
+            // Download the video from the URI
+            console.log('📥 Downloading video...');
+            const videoResponse = await fetch(videoUri, {
+                headers: {
+                    'x-goog-api-key': apiKey,
+                },
+            });
+
+            if (!videoResponse.ok) {
+                throw new Error(`Failed to download video: ${videoResponse.status}`);
+            }
+
+            const videoBuffer = await videoResponse.arrayBuffer();
+
+            // Upload to Vercel Blob storage
+            const filename = `scenario-${scenarioId}-${Date.now()}.mp4`;
+            console.log('☁️ Uploading to Vercel Blob...');
+
+            const blob = await put(filename, Buffer.from(videoBuffer), {
+                access: 'public',
+                contentType: 'video/mp4',
+            });
+
+            const videoUrl = blob.url;
+            console.log('💾 Video uploaded to:', videoUrl);
+
+            // Store the video in the database
+            const [newVideo] = await db.insert(videos).values({
+                scenarioId: scenarioId,
+                url: videoUrl,
+                prompt: videoPrompt,
+                generatedBy: 'veo-3.1-preview',
+            }).returning();
+
+            console.log('✅ Video record created:', newVideo.id);
+
+            return NextResponse.json({
+                success: true,
+                video: newVideo,
+            });
 
         } catch (videoError: any) {
             console.error('❌ Video generation failed:', videoError);
-            console.error('Error details:', videoError.message);
 
             // Return error without creating placeholder
             return NextResponse.json({
