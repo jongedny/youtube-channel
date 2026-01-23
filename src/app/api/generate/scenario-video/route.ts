@@ -261,13 +261,13 @@ async function generateVideoWithSora(scenarioId: number, videoPrompt: string, re
         const requestBody: any = {
             model: 'sora-2',  // Using Sora 2 model
             prompt: videoPrompt,
-            size: '1920x1080', // 16:9 aspect ratio
         };
 
         // Add reference image if available
+        // Correct parameter name from OpenAI docs: input_reference
         if (referenceImageUrl) {
             console.log('🖼️ Including reference image:', referenceImageUrl);
-            requestBody.image = referenceImageUrl;
+            requestBody.input_reference = referenceImageUrl;
         }
 
         console.log('📝 Request body:', JSON.stringify(requestBody, null, 2));
