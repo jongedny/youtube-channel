@@ -62,6 +62,7 @@ export default function DashboardPage() {
     const [generatingImage, setGeneratingImage] = useState<number | null>(null);
     const [generatingVideo, setGeneratingVideo] = useState<number | null>(null);
     const [uploadingVideo, setUploadingVideo] = useState<number | null>(null);
+    const [selectedModel, setSelectedModel] = useState<Record<number, 'gemini' | 'sora'>>({});
 
     useEffect(() => {
         if (status === 'unauthenticated') {
@@ -180,17 +181,18 @@ export default function DashboardPage() {
         }
     }
 
-    async function generateScenarioVideo(scenarioId: number) {
+    async function generateScenarioVideo(scenarioId: number, model: 'gemini' | 'sora' = 'gemini') {
         setGeneratingVideo(scenarioId);
         try {
             const res = await fetch('/api/generate/scenario-video', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ scenarioId })
+                body: JSON.stringify({ scenarioId, model })
             });
             if (res.ok) {
                 await fetchData();
-                alert('✅ Scenario video generated! (8 seconds)');
+                const modelName = model === 'sora' ? 'OpenAI Sora' : 'Google Veo';
+                alert(`✅ Scenario video generated using ${modelName}! (8 seconds)`);
             } else {
                 const data = await res.json();
                 alert(`❌ Failed to generate video: ${data.error || 'Unknown error'}`);
@@ -520,23 +522,68 @@ export default function DashboardPage() {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <button
-                                                onClick={() => generateScenarioVideo(scenario.id)}
-                                                disabled={generatingVideo !== null}
-                                                className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-4 py-2 text-sm font-medium text-purple-400 transition-all hover:border-purple-500/50 hover:bg-purple-500/20 disabled:opacity-50"
-                                            >
-                                                {generatingVideo === scenario.id ? (
-                                                    <>
-                                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" />
-                                                        <span>Generating...</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <span>🎬</span>
-                                                        <span>Generate Video (8s)</span>
-                                                    </>
-                                                )}
-                                            </button>
+                                            <div className="space-y-3">
+                                                {/* Model Selector */}
+                                                <div className="rounded-lg border border-gray-700 bg-gray-800/30 p-3">
+                                                    <label className="mb-2 block text-xs font-medium text-gray-400">
+                                                        Select AI Model
+                                                    </label>
+                                                    <select
+                                                        value={selectedModel[scenario.id] || 'gemini'}
+                                                        onChange={(e) => setSelectedModel(prev => ({
+                                                            ...prev,
+                                                            [scenario.id]: e.target.value as 'gemini' | 'sora'
+                                                        }))}
+                                                        className="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                                                    >
+                                                        <option value="gemini">Google Veo 3.1 (Text-only)</option>
+                                                        <option value="sora">OpenAI Sora (Text + Image)</option>
+                                                    </select>
+
+                                                    {/* Model Info */}
+                                                    <div className="mt-2 rounded-md bg-gray-900/50 p-2">
+                                                        {(selectedModel[scenario.id] || 'gemini') === 'gemini' ? (
+                                                            <div className="flex items-start gap-2 text-xs text-gray-400">
+                                                                <span>ℹ️</span>
+                                                                <div>
+                                                                    <p className="font-medium text-gray-300">Google Veo 3.1</p>
+                                                                    <p>Text-to-video only. Reference images not supported.</p>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-start gap-2 text-xs text-purple-400">
+                                                                <span>✨</span>
+                                                                <div>
+                                                                    <p className="font-medium text-purple-300">OpenAI Sora</p>
+                                                                    <p>Supports reference images for better consistency!</p>
+                                                                    {scenarioImages[scenario.id] && (
+                                                                        <p className="mt-1 text-green-400">✅ Reference image available</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Generate Button */}
+                                                <button
+                                                    onClick={() => generateScenarioVideo(scenario.id, selectedModel[scenario.id] || 'gemini')}
+                                                    disabled={generatingVideo !== null}
+                                                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-4 py-2 text-sm font-medium text-purple-400 transition-all hover:border-purple-500/50 hover:bg-purple-500/20 disabled:opacity-50"
+                                                >
+                                                    {generatingVideo === scenario.id ? (
+                                                        <>
+                                                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" />
+                                                            <span>Generating...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span>🎬</span>
+                                                            <span>Generate Video (8s)</span>
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
