@@ -257,30 +257,45 @@ async function generateVideoWithSora(scenarioId: number, videoPrompt: string, re
         // Note: /v1/videos/generations returns 405 (wrong method), so using /v1/videos
         const endpoint = 'https://api.openai.com/v1/videos';
 
-        // Prepare the request body
-        const requestBody: any = {
-            model: 'sora-2',  // Using Sora 2 model
-            prompt: videoPrompt,
-        };
+        // Sora API requires multipart/form-data with file upload, not JSON
+        // Reference: input_reference="@sample_720p.jpeg;type=image/jpeg"
+        const formData = new FormData();
+        formData.append('model', 'sora-2');
+        formData.append('prompt', videoPrompt);
 
-        // Add reference image if available
-        // Correct parameter name from OpenAI docs: input_reference
+        // Download and attach reference image if available
         if (referenceImageUrl) {
-            console.log('🖼️ Including reference image:', referenceImageUrl);
-            requestBody.input_reference = referenceImageUrl;
+            console.log('🖼️ Downloading reference image:', referenceImageUrl);
+
+            try {
+                const imageResponse = await fetch(referenceImageUrl);
+                if (!imageResponse.ok) {
+                    throw new Error(`Failed to download reference image: ${imageResponse.status}`);
+                }
+
+                const imageBuffer = await imageResponse.arrayBuffer();
+                const imageBlob = new Blob([imageBuffer], { type: 'image/jpeg' });
+
+                // Append as file with proper content type
+                formData.append('input_reference', imageBlob, 'reference.jpeg');
+                console.log('✅ Reference image downloaded and attached to request');
+            } catch (imageError: any) {
+                console.error('❌ Failed to download reference image:', imageError);
+                throw new Error(`Could not download reference image: ${imageError.message}`);
+            }
         }
 
-        console.log('📝 Request body:', JSON.stringify(requestBody, null, 2));
+        console.log('📝 Request prepared with FormData');
         console.log(`🔍 Calling endpoint: ${endpoint}`);
 
-        // Call OpenAI Sora API
+        // Call OpenAI Sora API with multipart/form-data
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`,
+                // Don't set Content-Type - let fetch set it with boundary for multipart/form-data
             },
-            body: JSON.stringify(requestBody),
+            body: formData,
         });
 
         const responseText = await response.text();
