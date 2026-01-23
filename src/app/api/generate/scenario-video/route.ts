@@ -252,16 +252,16 @@ async function generateVideoWithSora(scenarioId: number, videoPrompt: string, re
         // Current endpoint is speculative and based on OpenAI's typical API patterns
         // Check the official documentation at: https://platform.openai.com/docs
 
-        // Try multiple possible endpoint patterns
+        // Official Sora API endpoint from OpenAI documentation
+        // Reference: https://platform.openai.com/docs/models/sora-2
         const possibleEndpoints = [
-            'https://api.openai.com/v1/videos/generations',  // Pattern 1: Similar to images
-            'https://api.openai.com/v1/video/generations',   // Pattern 2: Singular form
-            'https://api.openai.com/v1/sora/generations',    // Pattern 3: Model-specific
+            'https://api.openai.com/v1/videos',  // Official endpoint
+            'https://api.openai.com/v1/videos/generations',  // Alternative pattern
         ];
 
         // Prepare the request body
         const requestBody: any = {
-            model: 'sora-1.0-turbo',
+            model: 'sora-2',  // Using Sora 2 model
             prompt: videoPrompt,
             size: '1920x1080', // 16:9 aspect ratio
         };
@@ -330,7 +330,7 @@ async function generateVideoWithSora(scenarioId: number, videoPrompt: string, re
                         scenarioId: scenarioId,
                         url: finalVideoUrl,
                         prompt: videoPrompt,
-                        generatedBy: 'sora-1.0-turbo',
+                        generatedBy: 'sora-2',
                     }).returning();
 
                     console.log('✅ Video record created:', newVideo.id);
