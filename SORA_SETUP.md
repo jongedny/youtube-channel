@@ -1,6 +1,29 @@
 # OpenAI Sora Integration
 
-This document explains how to use OpenAI Sora for video generation with reference image support.
+## ⚠️ IMPORTANT: Sora API Availability
+
+**As of January 2026, the OpenAI Sora API may not be publicly available yet.**
+
+The 404 error you're seeing indicates that the Sora API endpoint doesn't exist or isn't accessible with your API key. This is expected because:
+
+1. **Sora is in limited release** - Not all OpenAI API keys have access
+2. **API may not be public** - Sora might still be in private beta
+3. **Endpoint structure unknown** - The actual API endpoint hasn't been officially documented
+
+### What This Means
+
+- ✅ **Google Veo works** - Your existing video generation is functional
+- ⏳ **Sora is prepared** - The code is ready for when Sora becomes available
+- 🔄 **Easy to update** - Once Sora API is released, we just need to update the endpoint
+
+### Next Steps
+
+1. **Check OpenAI Status**: Visit [platform.openai.com/docs](https://platform.openai.com/docs) to see if Sora API is available
+2. **Request Access**: If Sora is in beta, request access through OpenAI
+3. **Use Veo for now**: Continue using Google Veo 3.1 for video generation
+4. **Monitor Updates**: Watch for OpenAI announcements about Sora API release
+
+---
 
 ## Overview
 

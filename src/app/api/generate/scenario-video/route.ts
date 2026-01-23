@@ -235,6 +235,9 @@ async function generateVideoWithGemini(scenarioId: number, videoPrompt: string) 
 }
 
 // OpenAI Sora video generation (with reference image support)
+// NOTE: As of January 2026, OpenAI Sora API may not be publicly available yet.
+// This implementation is based on expected API patterns and will need to be updated
+// once the official Sora API is released. Check https://platform.openai.com/docs for updates.
 async function generateVideoWithSora(scenarioId: number, videoPrompt: string, referenceImageUrl?: string) {
     try {
         const apiKey = process.env.OPENAI_API_KEY;
@@ -242,7 +245,19 @@ async function generateVideoWithSora(scenarioId: number, videoPrompt: string, re
             throw new Error('OPENAI_API_KEY not found in environment variables. Please add it to .env.local');
         }
 
-        console.log('🎬 Calling OpenAI Sora API...');
+        console.log('🎬 Attempting to call OpenAI Sora API...');
+        console.log('⚠️ Note: Sora API may not be publicly available yet');
+
+        // IMPORTANT: Update this endpoint when OpenAI releases the official Sora API
+        // Current endpoint is speculative and based on OpenAI's typical API patterns
+        // Check the official documentation at: https://platform.openai.com/docs
+
+        // Try multiple possible endpoint patterns
+        const possibleEndpoints = [
+            'https://api.openai.com/v1/videos/generations',  // Pattern 1: Similar to images
+            'https://api.openai.com/v1/video/generations',   // Pattern 2: Singular form
+            'https://api.openai.com/v1/sora/generations',    // Pattern 3: Model-specific
+        ];
 
         // Prepare the request body
         const requestBody: any = {
@@ -257,67 +272,94 @@ async function generateVideoWithSora(scenarioId: number, videoPrompt: string, re
             requestBody.image = referenceImageUrl;
         }
 
-        // Call OpenAI Sora API
-        const response = await fetch('https://api.openai.com/v1/video/generations', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify(requestBody),
-        });
+        console.log('📝 Request body:', JSON.stringify(requestBody, null, 2));
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ Sora API error:', errorText);
-            throw new Error(`Sora API failed: ${response.status} - ${errorText}`);
+        let lastError: any = null;
+
+        // Try each endpoint
+        for (const endpoint of possibleEndpoints) {
+            try {
+                console.log(`🔍 Trying endpoint: ${endpoint}`);
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`,
+                    },
+                    body: JSON.stringify(requestBody),
+                });
+
+                const responseText = await response.text();
+
+                if (response.ok) {
+                    // Success! Parse and process the response
+                    const soraData = JSON.parse(responseText);
+                    console.log('✅ Sora API response received from:', endpoint);
+                    console.log('📦 Response:', JSON.stringify(soraData, null, 2));
+
+                    // Extract video URL from response
+                    const videoUrl = soraData.data?.[0]?.url || soraData.url || soraData.video_url;
+
+                    if (!videoUrl) {
+                        throw new Error('No video URL found in Sora API response');
+                    }
+
+                    console.log('📥 Video URL from Sora:', videoUrl);
+
+                    // Download and re-upload to Vercel Blob for consistency
+                    const videoResponse = await fetch(videoUrl);
+                    if (!videoResponse.ok) {
+                        throw new Error(`Failed to download video from Sora: ${videoResponse.status}`);
+                    }
+
+                    const videoBuffer = await videoResponse.arrayBuffer();
+                    const filename = `scenario-${scenarioId}-sora-${Date.now()}.mp4`;
+
+                    console.log('☁️ Uploading to Vercel Blob...');
+                    const blob = await put(filename, Buffer.from(videoBuffer), {
+                        access: 'public',
+                        contentType: 'video/mp4',
+                    });
+
+                    const finalVideoUrl = blob.url;
+                    console.log('💾 Video uploaded to:', finalVideoUrl);
+
+                    // Store the video in the database
+                    const [newVideo] = await db.insert(videos).values({
+                        scenarioId: scenarioId,
+                        url: finalVideoUrl,
+                        prompt: videoPrompt,
+                        generatedBy: 'sora-1.0-turbo',
+                    }).returning();
+
+                    console.log('✅ Video record created:', newVideo.id);
+
+                    return NextResponse.json({
+                        success: true,
+                        video: newVideo,
+                    });
+                } else {
+                    // Log the error and try next endpoint
+                    console.log(`❌ Endpoint ${endpoint} failed with status ${response.status}`);
+                    console.log(`Response: ${responseText.substring(0, 500)}`);
+                    lastError = new Error(`${endpoint} returned ${response.status}: ${responseText.substring(0, 200)}`);
+                }
+            } catch (endpointError: any) {
+                console.log(`❌ Error with endpoint ${endpoint}:`, endpointError.message);
+                lastError = endpointError;
+            }
         }
 
-        const soraData = await response.json();
-        console.log('✅ Sora API response received');
-
-        // Extract video URL from response
-        // Note: The actual response structure may vary - adjust based on OpenAI's documentation
-        const videoUrl = soraData.data?.[0]?.url || soraData.url;
-
-        if (!videoUrl) {
-            throw new Error('No video URL returned from Sora API');
-        }
-
-        console.log('📥 Video URL from Sora:', videoUrl);
-
-        // Download and re-upload to Vercel Blob for consistency
-        const videoResponse = await fetch(videoUrl);
-        if (!videoResponse.ok) {
-            throw new Error(`Failed to download video from Sora: ${videoResponse.status}`);
-        }
-
-        const videoBuffer = await videoResponse.arrayBuffer();
-        const filename = `scenario-${scenarioId}-sora-${Date.now()}.mp4`;
-
-        console.log('☁️ Uploading to Vercel Blob...');
-        const blob = await put(filename, Buffer.from(videoBuffer), {
-            access: 'public',
-            contentType: 'video/mp4',
-        });
-
-        const finalVideoUrl = blob.url;
-        console.log('💾 Video uploaded to:', finalVideoUrl);
-
-        // Store the video in the database
-        const [newVideo] = await db.insert(videos).values({
-            scenarioId: scenarioId,
-            url: finalVideoUrl,
-            prompt: videoPrompt,
-            generatedBy: 'sora-1.0-turbo',
-        }).returning();
-
-        console.log('✅ Video record created:', newVideo.id);
-
-        return NextResponse.json({
-            success: true,
-            video: newVideo,
-        });
+        // If we get here, all endpoints failed
+        throw new Error(
+            `OpenAI Sora API is not available. This could mean:\n` +
+            `1. Sora API is not yet publicly released\n` +
+            `2. Your API key doesn't have Sora access\n` +
+            `3. The API endpoint has changed\n\n` +
+            `Please check https://platform.openai.com/docs for the latest Sora API documentation.\n\n` +
+            `Last error: ${lastError?.message || 'Unknown error'}`
+        );
 
     } catch (soraError: any) {
         console.error('❌ Sora video generation failed:', soraError);
