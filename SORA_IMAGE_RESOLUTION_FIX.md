@@ -16,19 +16,40 @@ Updated the image generation API to produce images in **16:9 aspect ratio** (128
 
 ### Changes Made
 
-#### 1. Updated Image Generation API
+#### 1. Configure 16:9 Aspect Ratio
 **File**: `/src/app/api/generate/scenario-image/route.ts`
 
 Added `generationConfig` to the Gemini API request:
 ```typescript
 generationConfig: {
     imageConfig: {
-        aspectRatio: '16:9'  // 1280x720 to match Sora video resolution
+        aspectRatio: '16:9'
     }
 }
 ```
 
-#### 2. Updated Placeholder Fallback
+**Note**: Gemini generates images at **1344x768** (16:9 ratio, but not exactly 720p)
+
+#### 2. Resize to Exact Dimensions
+**File**: `/src/app/api/generate/scenario-video/route.ts`
+
+Added Sharp library to resize reference images to exactly 1280x720:
+```typescript
+import sharp from 'sharp';
+
+// ... in the Sora generation function:
+const resizedImageBuffer = await sharp(Buffer.from(imageBuffer))
+    .resize(1280, 720, {
+        fit: 'cover',      // Crop to exact dimensions
+        position: 'center'  // Center the crop
+    })
+    .jpeg({ quality: 90 })
+    .toBuffer();
+```
+
+**Result**: Images are now exactly **1280x720** pixels before being sent to Sora ✅
+
+#### 3. Updated Placeholder Fallback
 Changed placeholder dimensions from `1024x576` to `1280x720`:
 ```typescript
 const placeholderUrl = `https://placehold.co/1280x720/1a1a2e/e94560?text=Scenario+${scenarioId}`;
