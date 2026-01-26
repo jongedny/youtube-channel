@@ -332,19 +332,92 @@ async function generateVideoWithSora(scenarioId: number, videoPrompt: string, re
         console.log('✅ Sora API response received');
         console.log('📦 Response structure:', JSON.stringify(soraData, null, 2));
 
-        // Extract video URL from response
-        // Try multiple possible response structures
-        const videoUrl = soraData.data?.[0]?.url ||
-            soraData.url ||
-            soraData.video_url ||
-            soraData.data?.[0]?.video?.url;
+        let videoUrl: string | null = null;
 
-        if (!videoUrl) {
-            console.error('❌ No video URL found in response:', JSON.stringify(soraData, null, 2));
-            throw new Error('No video URL found in Sora API response. Response structure may have changed.');
+        // Sora API is async - video is queued for generation
+        if (soraData.status === 'queued' || soraData.status === 'processing') {
+            console.log('⏳ Video is queued/processing. Video ID:', soraData.id);
+            console.log('📊 Status:', soraData.status, '| Progress:', soraData.progress);
+
+            // Poll for completion (max 5 minutes)
+            const videoId = soraData.id;
+            const maxAttempts = 60; // 60 attempts * 5 seconds = 5 minutes
+            let attempts = 0;
+
+            while (attempts < maxAttempts) {
+                attempts++;
+                console.log(`🔄 Polling attempt ${attempts}/${maxAttempts}...`);
+
+                // Wait 5 seconds before polling
+                await new Promise(resolve => setTimeout(resolve, 5000));
+
+                // Check video status
+                const statusResponse = await fetch(`${endpoint}/${videoId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                    },
+                });
+
+                if (!statusResponse.ok) {
+                    console.error(`❌ Status check failed (${statusResponse.status})`);
+                    continue;
+                }
+
+                const statusData = await statusResponse.json();
+                console.log('📊 Status:', statusData.status, '| Progress:', statusData.progress);
+
+                if (statusData.status === 'completed') {
+                    // Video is ready! Extract URL
+                    videoUrl = statusData.url ||
+                        statusData.video_url ||
+                        statusData.output?.url ||
+                        statusData.data?.[0]?.url;
+
+                    if (videoUrl) {
+                        console.log('✅ Video generation completed!');
+                        console.log('📥 Video URL:', videoUrl);
+                        break;
+                    } else {
+                        console.error('❌ Video completed but no URL found:', JSON.stringify(statusData, null, 2));
+                        throw new Error('Video completed but no URL in response');
+                    }
+                } else if (statusData.status === 'failed' || statusData.error) {
+                    console.error('❌ Video generation failed:', statusData.error);
+                    throw new Error(`Sora video generation failed: ${statusData.error || 'Unknown error'}`);
+                }
+
+                // Still processing, continue polling
+            }
+
+            if (!videoUrl) {
+                throw new Error('Video generation timed out after 5 minutes');
+            }
+        } else if (soraData.status === 'completed') {
+            // Video completed immediately (unlikely but handle it)
+            videoUrl = soraData.url ||
+                soraData.video_url ||
+                soraData.output?.url ||
+                soraData.data?.[0]?.url ||
+                null;
+
+            if (!videoUrl) {
+                console.error('❌ No video URL found in completed response:', JSON.stringify(soraData, null, 2));
+                throw new Error('No video URL found in Sora API response');
+            }
+
+            console.log('📥 Video URL from Sora:', videoUrl);
+        } else {
+            console.error('❌ Unexpected response status:', soraData.status);
+            throw new Error(`Unexpected Sora API response status: ${soraData.status}`);
         }
 
-        console.log('📥 Video URL from Sora:', videoUrl);
+        // Ensure videoUrl is set
+        if (!videoUrl) {
+            throw new Error('No video URL available after processing');
+        }
+
+        console.log('📥 Final video URL from Sora:', videoUrl);
 
         // Download and re-upload to Vercel Blob for consistency
         console.log('⬇️ Downloading video from Sora...');
