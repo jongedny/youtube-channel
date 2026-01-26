@@ -263,6 +263,7 @@ async function generateVideoWithSora(scenarioId: number, videoPrompt: string, re
         const formData = new FormData();
         formData.append('model', 'sora-2');
         formData.append('prompt', videoPrompt);
+        formData.append('size', '1280x720');  // Explicitly specify 720p resolution
 
         // Download and attach reference image if available
         if (referenceImageUrl) {
