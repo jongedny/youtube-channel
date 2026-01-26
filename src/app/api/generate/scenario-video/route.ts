@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { scenarios, characters, videos, images } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { put } from '@vercel/blob';
+import sharp from 'sharp';
 
 // Version: 9.0 - Back to working Gemini API (text-to-video only, no reference images)
 const API_VERSION = '9.0-gemini-api-text-only';
@@ -274,11 +275,22 @@ async function generateVideoWithSora(scenarioId: number, videoPrompt: string, re
                 }
 
                 const imageBuffer = await imageResponse.arrayBuffer();
-                const imageBlob = new Blob([imageBuffer], { type: 'image/jpeg' });
+
+                // Resize image to exactly 1280x720 (720p) to match Sora's video resolution
+                console.log('🔧 Resizing image to 1280x720...');
+                const resizedImageBuffer = await sharp(Buffer.from(imageBuffer))
+                    .resize(1280, 720, {
+                        fit: 'cover',  // Crop to exact dimensions
+                        position: 'center'
+                    })
+                    .jpeg({ quality: 90 })
+                    .toBuffer();
+
+                const imageBlob = new Blob([new Uint8Array(resizedImageBuffer)], { type: 'image/jpeg' });
 
                 // Append as file with proper content type
                 formData.append('input_reference', imageBlob, 'reference.jpeg');
-                console.log('✅ Reference image downloaded and attached to request');
+                console.log('✅ Reference image resized to 1280x720 and attached to request');
             } catch (imageError: any) {
                 console.error('❌ Failed to download reference image:', imageError);
                 throw new Error(`Could not download reference image: ${imageError.message}`);
