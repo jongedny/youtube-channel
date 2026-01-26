@@ -94,7 +94,15 @@ POST https://api.openai.com/v1/videos
 ```
 GET https://api.openai.com/v1/videos/{video_id}
 ```
-**Returns**: Updated status and video URL when complete
+**Returns**: Updated status (no video URL in response)
+
+### Download Video (GET)
+```
+GET https://api.openai.com/v1/videos/{video_id}/content
+```
+**Returns**: Binary MP4 video data
+**Requires**: Authorization header with API key
+**Note**: URLs valid for 1 hour after generation
 
 ## Status Flow
 
@@ -143,11 +151,12 @@ queued → processing → completed
    {
      "id": "video_xxx",
      "status": "completed",
-     "url": "https://...",
      "progress": 100
+     // Note: No video URL in this response!
    }
 
-5. Download video from URL
+5. Download video from GET /v1/videos/{id}/content
+   (with Authorization header)
 
 6. Upload to Vercel Blob
 
