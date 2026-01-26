@@ -80,7 +80,12 @@ Art style: Dramatic cinematic composition with a slightly surreal, VHS-tape aest
                             parts: [{
                                 text: imagePrompt
                             }]
-                        }]
+                        }],
+                        generationConfig: {
+                            imageConfig: {
+                                aspectRatio: '16:9'  // 1280x720 to match Sora video resolution
+                            }
+                        }
                     }),
                 }
             );
@@ -150,8 +155,8 @@ Art style: Dramatic cinematic composition with a slightly surreal, VHS-tape aest
         } catch (imageError: any) {
             console.error('❌ Image generation failed:', imageError);
 
-            // Fallback to placeholder if image generation fails
-            const placeholderUrl = `https://placehold.co/1024x576/1a1a2e/e94560?text=Scenario+${scenarioId}`;
+            // Fallback to placeholder if image generation fails (16:9 aspect ratio for Sora compatibility)
+            const placeholderUrl = `https://placehold.co/1280x720/1a1a2e/e94560?text=Scenario+${scenarioId}`;
 
             const [newImage] = await db.insert(images).values({
                 scenarioId: scenarioId,
