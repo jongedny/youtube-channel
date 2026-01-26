@@ -75,7 +75,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({
                 success: false,
                 error: uploadResult.error,
-            }, { status: 500 });
+                isAuthError: uploadResult.isAuthError, // Pass through auth error flag
+            }, { status: uploadResult.isAuthError ? 401 : 500 });
         }
 
         // Update database with YouTube info

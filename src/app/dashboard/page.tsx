@@ -63,6 +63,7 @@ export default function DashboardPage() {
     const [generatingVideo, setGeneratingVideo] = useState<number | null>(null);
     const [uploadingVideo, setUploadingVideo] = useState<number | null>(null);
     const [selectedModel, setSelectedModel] = useState<Record<number, 'gemini' | 'sora'>>({});
+    const [youtubeAuthError, setYoutubeAuthError] = useState(false);
 
     useEffect(() => {
         if (status === 'unauthenticated') {
@@ -223,10 +224,17 @@ export default function DashboardPage() {
             const data = await res.json();
 
             if (res.ok && data.success) {
+                setYoutubeAuthError(false); // Clear any previous auth errors
                 await fetchData();
                 alert(`✅ Video uploaded to YouTube!\n\n${data.youtubeUrl}`);
             } else {
-                alert(`❌ Failed to upload to YouTube: ${data.error || 'Unknown error'}`);
+                // Check if this is an authentication error
+                if (data.isAuthError || res.status === 401) {
+                    setYoutubeAuthError(true);
+                    alert(`🔐 YouTube authentication expired!\n\nPlease re-authenticate with YouTube to continue uploading videos.`);
+                } else {
+                    alert(`❌ Failed to upload to YouTube: ${data.error || 'Unknown error'}`);
+                }
             }
         } catch (error) {
             console.error('Error uploading to YouTube:', error);
@@ -501,23 +509,35 @@ export default function DashboardPage() {
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <button
-                                                            onClick={() => uploadToYouTube(scenarioVideos[scenario.id].id, scenario.title)}
-                                                            disabled={uploadingVideo !== null}
-                                                            className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 transition-all hover:border-red-500/50 hover:bg-red-500/20 disabled:opacity-50"
-                                                        >
-                                                            {uploadingVideo === scenarioVideos[scenario.id].id ? (
-                                                                <>
-                                                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
-                                                                    <span>Uploading...</span>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <span>📤</span>
-                                                                    <span>Upload to YouTube</span>
-                                                                </>
-                                                            )}
-                                                        </button>
+                                                        youtubeAuthError ? (
+                                                            <a
+                                                                href="/api/youtube/auth"
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 text-sm font-medium text-yellow-400 transition-all hover:border-yellow-500/50 hover:bg-yellow-500/20"
+                                                            >
+                                                                <span>🔐</span>
+                                                                <span>Re-authenticate YouTube</span>
+                                                            </a>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => uploadToYouTube(scenarioVideos[scenario.id].id, scenario.title)}
+                                                                disabled={uploadingVideo !== null}
+                                                                className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 transition-all hover:border-red-500/50 hover:bg-red-500/20 disabled:opacity-50"
+                                                            >
+                                                                {uploadingVideo === scenarioVideos[scenario.id].id ? (
+                                                                    <>
+                                                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
+                                                                        <span>Uploading...</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <span>📤</span>
+                                                                        <span>Upload to YouTube</span>
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                        )
                                                     )}
                                                 </div>
                                             </div>

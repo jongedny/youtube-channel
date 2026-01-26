@@ -16,6 +16,7 @@ export interface YouTubeUploadResult {
     videoId?: string;
     videoUrl?: string;
     error?: string;
+    isAuthError?: boolean; // Indicates if re-authentication is needed
 }
 
 /**
@@ -80,9 +81,17 @@ export async function uploadToYouTube(
         };
     } catch (error: any) {
         console.error('❌ YouTube upload failed:', error);
+
+        // Check if this is an authentication error
+        const isAuthError = error.message?.includes('No access') ||
+            error.message?.includes('refresh token') ||
+            error.message?.includes('invalid_grant') ||
+            error.code === 401;
+
         return {
             success: false,
             error: error.message || 'Unknown error occurred',
+            isAuthError, // Flag to indicate re-authentication is needed
         };
     }
 }
