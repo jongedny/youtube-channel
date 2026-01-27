@@ -36,6 +36,16 @@ interface ScenarioImage {
     createdAt: Date;
 }
 
+interface CharacterImage {
+    id: number;
+    characterId: number;
+    url: string;
+    prompt: string | null;
+    approved: boolean;
+    generatedBy: string;
+    createdAt: Date;
+}
+
 interface ScenarioVideo {
     id: number;
     scenarioId: number;
@@ -56,10 +66,12 @@ export default function DashboardPage() {
     const [characters, setCharacters] = useState<Character[]>([]);
     const [scenarios, setScenarios] = useState<Scenario[]>([]);
     const [scenarioImages, setScenarioImages] = useState<Record<number, ScenarioImage>>({});
+    const [characterImages, setCharacterImages] = useState<Record<number, CharacterImage>>({});
     const [scenarioVideos, setScenarioVideos] = useState<Record<number, ScenarioVideo>>({});
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState<'character' | 'scenario' | null>(null);
     const [generatingImage, setGeneratingImage] = useState<number | null>(null);
+    const [generatingCharacterImage, setGeneratingCharacterImage] = useState<number | null>(null);
     const [generatingVideo, setGeneratingVideo] = useState<number | null>(null);
     const [uploadingVideo, setUploadingVideo] = useState<number | null>(null);
     const [selectedModel, setSelectedModel] = useState<Record<number, 'gemini' | 'sora'>>({});
@@ -98,13 +110,18 @@ export default function DashboardPage() {
 
             if (imagesRes.ok) {
                 const data = await imagesRes.json();
-                const imageMap: Record<number, ScenarioImage> = {};
-                data.images?.forEach((img: ScenarioImage) => {
+                const scenarioImageMap: Record<number, ScenarioImage> = {};
+                const characterImageMap: Record<number, CharacterImage> = {};
+                data.images?.forEach((img: any) => {
                     if (img.scenarioId) {
-                        imageMap[img.scenarioId] = img;
+                        scenarioImageMap[img.scenarioId] = img;
+                    }
+                    if (img.characterId) {
+                        characterImageMap[img.characterId] = img;
                     }
                 });
-                setScenarioImages(imageMap);
+                setScenarioImages(scenarioImageMap);
+                setCharacterImages(characterImageMap);
             }
 
             if (videosRes.ok) {
@@ -179,6 +196,46 @@ export default function DashboardPage() {
             alert('❌ Error generating image');
         } finally {
             setGeneratingImage(null);
+        }
+    }
+
+    async function generateCharacterImage(characterId: number) {
+        setGeneratingCharacterImage(characterId);
+        try {
+            const res = await fetch('/api/generate/character-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ characterId })
+            });
+            if (res.ok) {
+                await fetchData();
+                alert('✅ Character image generated!');
+            } else {
+                alert('❌ Failed to generate character image');
+            }
+        } catch (error) {
+            console.error('Error generating character image:', error);
+            alert('❌ Error generating character image');
+        } finally {
+            setGeneratingCharacterImage(null);
+        }
+    }
+
+    async function updateImageApproval(imageId: number, approved: boolean) {
+        try {
+            const res = await fetch('/api/update-image-approval', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imageId, approved })
+            });
+            if (res.ok) {
+                await fetchData();
+            } else {
+                alert('❌ Failed to update approval status');
+            }
+        } catch (error) {
+            console.error('Error updating approval:', error);
+            alert('❌ Error updating approval status');
         }
     }
 
@@ -370,8 +427,56 @@ export default function DashboardPage() {
                                     </div>
                                     <p className="mb-2 text-sm text-gray-500">{char.roleAndVibe}</p>
                                     {char.backstory && (
-                                        <p className="text-xs text-gray-600">{char.backstory}</p>
+                                        <p className="mb-3 text-xs text-gray-600">{char.backstory}</p>
                                     )}
+
+                                    {/* Character Image Section */}
+                                    <div className="mt-4 border-t border-gray-800 pt-4">
+                                        {characterImages[char.id] ? (
+                                            <div className="space-y-2">
+                                                <img
+                                                    src={characterImages[char.id].url}
+                                                    alt={char.name}
+                                                    className="w-full rounded-lg border border-gray-700"
+                                                />
+                                                <p className="text-xs text-gray-600">Generated by {characterImages[char.id].generatedBy}</p>
+
+                                                {/* Approval Checkbox */}
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={characterImages[char.id].approved}
+                                                        onChange={(e) => updateImageApproval(characterImages[char.id].id, e.target.checked)}
+                                                        className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-green-500 focus:ring-2 focus:ring-green-500/50 focus:ring-offset-0"
+                                                    />
+                                                    <span className={`text-sm ${characterImages[char.id].approved
+                                                            ? 'text-green-400 font-medium'
+                                                            : 'text-gray-400'
+                                                        }`}>
+                                                        {characterImages[char.id].approved ? '✅ Approved' : 'Approve design'}
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => generateCharacterImage(char.id)}
+                                                disabled={generatingCharacterImage !== null}
+                                                className="flex w-full items-center justify-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-4 py-2 text-sm font-medium text-purple-400 transition-all hover:border-purple-500/50 hover:bg-purple-500/20 disabled:opacity-50"
+                                            >
+                                                {generatingCharacterImage === char.id ? (
+                                                    <>
+                                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" />
+                                                        <span>Generating...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span>🎨</span>
+                                                        <span>Generate Character Image</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>

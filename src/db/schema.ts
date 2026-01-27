@@ -51,6 +51,7 @@ export const images = pgTable('images', {
     characterId: integer('character_id').references(() => characters.id),
     url: varchar('url', { length: 500 }).notNull(),
     prompt: text('prompt'),
+    approved: boolean('approved').default(false), // User approval status for character images
     generatedBy: varchar('generated_by', { length: 50 }).default('gemini').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
