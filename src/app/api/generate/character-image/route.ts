@@ -42,7 +42,7 @@ Pocket Artifact: ${character.pocketArtifact}
 Role & Vibe: ${character.roleAndVibe}
 ${character.backstory ? `\nBackstory: ${character.backstory}` : ''}
 
-Art style: Cinematic character portrait with a slightly surreal, VHS-tape aesthetic. Vibrant, saturated colors with subtle glitch effects. Show this tiny ${character.species} character in full body view with their pocket artifact visible. The character should have a dramatic, epic presence despite being only 4.20 inches tall. Photorealistic but with intentional glitch artifacts and analog video distortion. The character should look ready for adventure in the massive human world. Isolated on white.`;
+Art style: Cinematic character portrait with a slightly surreal, VHS-tape aesthetic. Vibrant, saturated colors with subtle glitch effects. Show this tiny ${character.species} character in full body view with their pocket artifact visible. The character should have a dramatic, epic presence despite being only 4.20 inches tall. Photorealistic but with intentional glitch artifacts and analog video distortion. Clean background that emphasizes the character. The character should look ready for adventure in the massive human world.`;
 
         console.log('📝 Character image prompt:', imagePrompt);
 
