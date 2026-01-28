@@ -89,26 +89,42 @@ Art style: Cinematic character portrait with a slightly surreal, VHS-tape aesthe
             console.log('📦 Response data:', JSON.stringify(data, null, 2));
 
             // Extract the base64 image data from generateContent response
-            // Response format: { candidates: [{ content: { parts: [{ inlineData: { mimeType, data } }] } }] }
+            // Response format can vary, so we check multiple possible structures
             console.log('🔍 Checking response structure...');
             console.log('Has candidates?', !!data.candidates);
             console.log('Candidates length:', data.candidates?.length);
+
+            let imageData = null;
+
+            // Try to find image data in different possible locations
             if (data.candidates?.[0]) {
-                console.log('Has content?', !!data.candidates[0].content);
-                console.log('Has parts?', !!data.candidates[0].content?.parts);
-                console.log('Parts length:', data.candidates[0].content?.parts?.length);
-                if (data.candidates[0].content?.parts?.[0]) {
-                    console.log('Part 0 keys:', Object.keys(data.candidates[0].content.parts[0]));
-                    console.log('Has inlineData?', !!data.candidates[0].content.parts[0].inlineData);
+                const candidate = data.candidates[0];
+                console.log('Has content?', !!candidate.content);
+                console.log('Has parts?', !!candidate.content?.parts);
+                console.log('Parts length:', candidate.content?.parts?.length);
+
+                // Check all parts for image data
+                if (candidate.content?.parts) {
+                    for (let i = 0; i < candidate.content.parts.length; i++) {
+                        const part = candidate.content.parts[i];
+                        console.log(`Part ${i} keys:`, Object.keys(part));
+
+                        if (part.inlineData?.data) {
+                            console.log(`✅ Found image data in part ${i}`);
+                            imageData = part.inlineData.data;
+                            break;
+                        }
+                    }
                 }
             }
 
-            let imageData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-
             if (!imageData) {
-                console.error('❌ Response structure:', JSON.stringify(data, null, 2));
+                console.error('❌ No image data found in any part');
+                console.error('❌ Full response structure:', JSON.stringify(data, null, 2));
                 throw new Error('No image data in response');
             }
+
+            console.log('✅ Image data extracted successfully, length:', imageData.length);
 
             // Convert base64 to buffer
             const buffer = Buffer.from(imageData, 'base64');
