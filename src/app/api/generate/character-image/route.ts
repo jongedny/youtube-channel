@@ -33,8 +33,17 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Detect if character name/description has tech/digital keywords that might trigger illustration style
+        const characterText = `${character.name} ${character.species} ${character.pocketArtifact} ${character.roleAndVibe}`.toLowerCase();
+        const hasTechKeywords = /byte|digital|cyber|tech|data|pixel|code|circuit|anime|manga|miko/i.test(characterText);
+
+        // Add style reinforcement if tech keywords detected
+        const styleReinforcement = hasTechKeywords
+            ? 'CRITICAL: Photorealistic CGI rendering style, NOT illustration, NOT anime, NOT cartoon. Maintain analog VHS film aesthetic with realistic textures and lighting. '
+            : '';
+
         // Build a detailed prompt for character image generation
-        const imagePrompt = `Full body character portrait from PocketRot universe: ${character.name}
+        const imagePrompt = `${styleReinforcement}Full body character portrait from PocketRot universe: ${character.name}
 
 Species: ${character.species}
 Size: Exactly 4.20 inches tall
